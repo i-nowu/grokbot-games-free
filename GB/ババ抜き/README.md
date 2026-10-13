@@ -19,6 +19,3 @@
 5. [音楽](docs/SOUND.md)
 
 ソースコードは公開していません。
-
-## フォント
-美咲フォントを使用しています。ライセンスは [fonts/misaki_readme.txt](fonts/misaki_readme.txt) を見てください。
