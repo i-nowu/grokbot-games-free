@@ -24,4 +24,11 @@
 4. [プログラム構成とテスト](docs/PROGRAMMING.md)
 5. [音楽](docs/SOUND.md)
 
+## 大変だったところ（担当ごとのふりかえり）
+- [企画](docs/HARD_PLANNING.md)
+- [仕様・環境構築](docs/HARD_ENVIRONMENT.md)
+- [グラフィック](docs/HARD_GRAPHICS.md)
+- [プログラム](docs/HARD_PROGRAMMING.md)
+- [音楽](docs/HARD_SOUND.md)
+
 ソースコードは公開していません。
