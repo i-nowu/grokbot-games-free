@@ -1,0 +1,15 @@
+# GBA 絵の形式
+- ご褒美の絵: Mode 4（240x160、8bpp）。承認済み256x160の内側 x=8〜247 を切り出し（外側は使わない）。
+  - `res/pics/NAME.bmp8` 38,400B（行優先）＋ `NAME.pal` 512B（256色 BGR555）。パレット0=黒・1=白は文字用に予約、絵は2〜255。
+  - 変換: `tools/gfx/conv_gba.py`。確認: `res/preview/NAME_gba.png`、一覧 `res/preview/gba_all_x2.png`（変換後データから再構成）。
+- ブロック 6x6: `res/blocks6x6.idx`（7種x6x6 のパレット番号）＋ `res/blocks6x6.pal`（4bpp 16色1本、0背景 1白 2〜22=7色x明中暗）。プログラムが4bppタイルに描く。
+  - モック: `res/preview/board_6x6_mock.png`。生成: `tools/gfx/gen_blocks.py`。
+- 盤面スプライト 6x6（`tools/gfx/gen_sprites6.py`）:
+  - `res/sprites6.idx` 16セルx36B（8bpp、board_pal の番号）。並び＝BFB_T 8 壁, 9〜16 敵(種類x2+コマ: カニ/おばけ/目玉/コウモリ), 17〜20 ボス12x12(dx+dy*2), 24 爆発, 25 ひび, 26 星。
+  - `res/sprites6.pal` 9色 → board_pal[23..31]（いま0の空き）。使う番号: 0背景 1白 20〜22鉄の灰 23〜31新色。32〜47（tiles.png・枠45/46）は触らない。
+  - `res/pat6_full.idx` 972B: pat6 をそのまま差し替える版（0〜7 ブロック、21〜23 UFO/パドル/ボールは従来の間引き版のまま）。
+  - 確認: `res/preview/sprites6_x4.png`、`res/preview/board_6x6_sprites_mock_x4.png`。
+- キャラ選びの顔 48x56（BG2の箱 6x7タイルと同じ大きさ）:
+  - `res/face_mika.4bpp` / `res/face_gou.4bpp` 各42タイル1344B（4bpp、タイルは左上から行優先6x7）。`.pal` 各16色32B（0未使用、1〜15絵）。
+  - BGパレット ミカ=14（PAL_FACE0）、ゴウ=13（PAL_FACE1）に16色まるごと入れる。他の画面パレットと重ならない。
+  - 元: ミカ=mika02 の x82〜141,y6〜75、ゴウ=gou03 の x74〜133,y0〜69（承認済み240x160 の内側のみ）を0.8倍。確認: `res/preview/charsel_faces_x4.png`。
