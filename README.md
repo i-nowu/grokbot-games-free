@@ -31,3 +31,6 @@ GrokBOTでチームを組んで作ったフリーゲームの置き場です。�
   - [シム群馬](NEOGEO/シム群馬/)
 - [N64](N64/)：N64用
   - [からっ風ライダー](N64/からっ風ライダー/)
+- [Muse](Muse/)：Meta の AI「Muse」が作ったブラウザ（HTML）ゲーム
+  - [ファミコン ピンボール](Muse/ファミコン%20ピンボール/)
+  - [SPACE KUMITE](Muse/SPACE%20KUMITE/)
