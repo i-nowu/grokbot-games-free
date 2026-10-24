@@ -1,0 +1,455 @@
+THIRD-PARTY SOFTWARE NOTICES — multiemu (異能ソフト マルチエミュ ブラウザ版) 公開版 2026-10-24b
+=====================================================================
+multiemu 本体 (*.js, cores/*/adapter.js) は異能ソフト製。この公開版にはソース・開発用テスト・ツール・
+docs・ソースマップは入れていない。GPLコードは含まない。
+同梱しているBIOS: ネオジオ用の異能ソフト自作クリーンルーム TEST BIOS v0.6 無償配布版 (cores/neogeo/roms.local.js) だけ。
+  v0.6 は v0.5 と同じコードに「(C) 2026 異能ソフト。無償配布版。…」の文 (英語と日本語) を入れたもの。
+  無償配布のみ可。有償のソフトに添付されていた場合は詐欺なので警察に通報してください。
+  古い自作BIOS (v0.3/v0.4/v0.5) は入っていない。
+同梱していないもの: SNK BIOS, Universe BIOS, C-BIOS (MSX。この版にはMSXコアも無い),
+  任天堂・Atari 純正ブートROM/BIOS, 市販ROM・市販セット。
+内蔵ゲームは異能ソフト製のみ (GENGAMES.md)。テストROMは同梱していない。
+GBのブートは SameBoy のオープンブートROM (MIT)、Lynx は Handy の HLE ブート (BIOS不要)。
+以下はコアごとの第三者コンポーネント表記。
+
+=== 今の構成のまとめ (2026-10-22 第5回で見直し) ===
+コア / 部品                     ライセンス              入っている場所
+Geolith (ネオジオ)              BSD-3-Clause            web/cores/neogeo/neocore.js
+  ymfm (C移植)                  BSD-3-Clause            同上
+  Musashi M68000                MIT                     同上
+  z80 (superzazu)               MIT                     同上
+  miniz                         MIT                     同上 (Geolith の zip 読込)
+  Speex resampler               BSD-3-Clause            同上
+  dr_flac                       Public Domain / MIT-0   同上 (CUE用、カートリッジでは未使用)
+SameBoy + オープンブートROM     Expat (MIT)             web/cores/gb/gbcore.js
+Handy 0.97 lynx/                zlib                    web/cores/lynx/lynxcore.js
+  scrc32.h (zlib 由来 CRC32)    zlib                    同上
+Emscripten ランタイム           MIT / NCSA              3つのコアの .js すべて
+ビルド・テスト素材作成だけに使ったツール (成果物に含まない): emsdk, rgbds v0.9.4,
+  GNU binutils (m68k), Info-ZIP zip 3.0, p7zip 16.02, Python, Node.js + puppeteer, headless Chrome。
+参照した公開資料 (コードは取り込んでいない): neogeodev wiki (CARD, P ROM ヘッダ, メモリーマップ),
+  ngdevkit memory-card.h の説明文, PKWARE APPNOTE.TXT。
+使わないもの: GPL/LGPL コード, MAME/FBNeo/gngeo のコード・表, SNK BIOS, Universe BIOS,
+  任天堂・Atari 純正ブートROM/BIOS, 市販ROM・市販セット。
+BIOS: ネオジオは異能ソフト自作クリーンルーム TEST BIOS v0.6 無償配布版のみ同梱。
+
+#####################################################################
+# コア: neogeo (web/cores/neogeo/neocore.js)
+# ネオジオ開発環境 の third_party (Geolith ほか) を読むだけで使い、ラッパ native/neogeo/core.c
+# (multiemu 版) と合わせて native/neogeo/build.sh で再ビルド。以下は ネオジオ開発環境 の表記の全文。
+#####################################################################
+
+THIRD-PARTY SOFTWARE NOTICES — ネオジオ開発環境
+=============================================
+ネオジオ開発環境 itself (src/, web/, tools/) is proprietary / unpublished.
+It contains the third-party components below. No SNK BIOS, no Universe BIOS,
+no MAME/gngeo/FBNeo code is used. The BIOS used is the team's own clean-room
+TEST BIOS (private, not distributed). Results are NOT verified on real hardware.
+
+
+----------------------------------------------------------------
+Geolith (Neo Geo emulation core) — BSD-3-Clause
+Source: https://github.com/libretro/geolith-libretro (upstream https://gitlab.com/jgemu/geolith), commit 2dc88e3fa72ff404213a65d6eb5bb33baa687f73
+Local modifications: geo_z80.c / geo_lspc.c (AES without SM1/SFIX fallback), CHD support replaced by stubs.
+----------------------------------------------------------------
+Copyright (c) 2022-2024 Rupert Carmichael
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+----------------------------------------------------------------
+ymfm (Yamaha FM sound core, Geolith C port) — BSD-3-Clause
+----------------------------------------------------------------
+Copyright (c) 2021 Aaron Giles
+Copyright (c) 2022 Rupert Carmichael
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+----------------------------------------------------------------
+Musashi M68000 CPU core — MIT
+----------------------------------------------------------------
+MUSASHI
+                               Version 4.60
+
+A portable Motorola M680x0 processor emulation engine.
+Copyright Karl Stenerud.  All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+----------------------------------------------------------------
+z80 CPU core (superzazu/z80) — MIT
+----------------------------------------------------------------
+MIT License
+
+Copyright (c) 2019 Nicolas Allemand
+Copyright (c) 2020-2022 Rupert Carmichael
+Copyright (c) 2022 rofl0r
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+----------------------------------------------------------------
+miniz (zip reader) — MIT
+----------------------------------------------------------------
+Copyright 2013-2014 RAD Game Tools and Valve Software
+Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC
+
+All Rights Reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+----------------------------------------------------------------
+Speex resampler — BSD-3-Clause
+----------------------------------------------------------------
+Copyright 2002-2008 	Xiph.org Foundation
+Copyright 2002-2008 	Jean-Marc Valin
+Copyright 2005-2007	Analog Devices Inc.
+Copyright 2005-2008	Commonwealth Scientific and Industrial Research
+                        Organisation (CSIRO)
+Copyright 1993, 2002, 2006 David Rowe
+Copyright 2003 		EpicGames
+Copyright 1992-1994	Jutta Degener, Carsten Bormann
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+- Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+- Neither the name of the Xiph.org Foundation nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+----------------------------------------------------------------
+dr_flac — Public Domain or MIT-0 (compiled-in via Geolith CUE code; unused for cartridges)
+----------------------------------------------------------------
+This software is available as a choice of the following licenses. Choose
+whichever you prefer.
+
+===============================================================================
+ALTERNATIVE 1 - Public Domain (www.unlicense.org)
+===============================================================================
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org/>
+
+===============================================================================
+ALTERNATIVE 2 - MIT No Attribution
+===============================================================================
+Copyright 2023 David Reid
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARIS
+
+
+----------------------------------------------------------------
+Emscripten runtime (glue code in web/cores/{neogeo/neocore.js, gb/gbcore.js, lynx/lynxcore.js}) — MIT / University of Illinois NCSA
+----------------------------------------------------------------
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+(Also bundled compiler-rt / musl libc portions: MIT.)
+
+
+#####################################################################
+# コア: gb (web/cores/gb/gbcore.js) — 第2段階 2026-10-22 追加
+#####################################################################
+SameBoy (Game Boy / Game Boy Color emulation core, Core/*.c) — Expat (MIT) License
+Source: https://github.com/LIJI32/SameBoy commit 26a56bd6a122a6318a456abd80558408742d5adf (2026-10-13)
+未改変で使用。web/cores/gb/gbcore.js にはエミュ作のラッパ native/gb/gbwrap.c を合わせて wasm 化。
+ブートROM: SameBoy 同梱のオープンブートROM (BootROMs/dmg_boot.asm, cgb_boot.asm, 同じ Expat License) を
+rgbds v0.9.4 (ビルド時のツールのみ、成果物に含まない) でアセンブルし wasm に内蔵。
+任天堂純正のブートROMは使わない・含まない・読み込まない。
+iOS / HexFiend ディレクトリ (別条件) は使っていない。
+
+  All files and directories in this repository, except for the iOS and HexFiend
+  directories, are licensed under the Expat License:
+  
+Expat License
+
+Copyright (c) 2015-2026 Lior Halphon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+#####################################################################
+# コア: lynx (web/cores/lynx/lynxcore.js) — 第2段階 2026-10-22 追加
+#####################################################################
+Handy 0.97 (Atari Lynx emulator) — zlib License
+Source: https://github.com/libretro/libretro-handy commit bc55d462f0b2d6b073ea93dc552ebd73cec60fd1 (2026-04-20)
+使用ファイル: lynx/{cart,eeprom,memmap,mikie,ram,rom,susie,system}.cpp と同ヘッダ (未改変)。
+lynx/scrc32.h の CRC32 表と関数は zlib 由来 (zlib License, (C) Jean-loup Gailly and Mark Adler)。
+使っていないもの: libretro/ 層、libretro-common、blip/ (Blip_Buffer / Stereo_Buffer = GPL/LGPL)、
+lynx/lynxdec.cpp (出典ライセンス不明のため)。これらの代わりに エミュ作のシム (native/lynx/shim/: 
+最小ヘッダ・ファイルアクセス無効化・自作の簡易ステレオ音声バッファ) とラッパ native/lynx/lynxwrap.cpp を使う。
+BIOS: Atari 純正 Lynx BIOS (lynxboot.img) は使わない・含まない。Handy の HLE ブートのみ。
+
+//
+// Copyright (c) 2004 K. Wilkins
+//
+// This software is provided 'as-is', without any express or implied warranty.
+// In no event will the authors be held liable for any damages arising from
+// the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+//
+// 2. Altered source versions must be plainly marked as such, and must not
+//    be misrepresented as being the original software.
+//
+// 3. This notice may not be removed or altered from any source distribution.
+//
+
+#####################################################################
+# 内蔵ソフト (第2段階)
+#####################################################################
+GB/GBC: グンマー教の野望・ババ抜き・ブロックフォール・ブレイカー (いずれもチーム自作、grokbot-games-free)。
+NEOGEO: シム群馬 (チーム自作、grokbot-games-free)。
+Lynx: 内蔵ゲームなし (公開版ではテストROMも同梱しない)。市販ROMは含まない。
+
+#####################################################################
+# 第2段階の残り (2026-10-22) — 追加の流用なし
+#####################################################################
+新しく取り込んだ外部コードはありません。ユーザーROM読込 (web/romload.js)・Lynx EEPROM 受け渡し
+(native/lynx/lynxwrap.cpp の追加分)・セーブ用テストROMはエミュ自作です。
+Lynx の EEPROM 本体は既出の Handy 0.97 (zlib) eeprom.cpp を未改変のまま使用。
+テストROMのビルドに使ったツール (成果物に含まない): rgbds v0.9.4 (GBセーブテスト)、
+GNU binutils m68k-linux-gnu-as/ld/objcopy (ネオジオ カードテスト)。
+自作テストROM: testroms/emu_gb_save.gb (MBC1+RAM+BATTERY)、testroms/emu_lynx_eeprom.o (BS93, 93C46)、
+testroms/emu_neo_cardtest.neo (メモリーカード)。市販ROM・純正BIOSは含まない。
+
+#####################################################################
+# 2026-10-22 第2段階の続き (自作TEST BIOS メモリーカード・ZIP読込) — 新しい外部コードなし
+#####################################################################
+ZIP読込 (web/romload.js): ZIPの目次の読み取りはエミュ自作。deflate の展開はブラウザ標準の
+DecompressionStream('deflate-raw') を使う (外部ライブラリなし、GPLなし)。
+ネオジオ コア (web/cores/neogeo/neocore.js): 上記の Geolith (BSD-3) ほかを ネオジオ開発環境 の
+third_party からそのまま使い、ラッパ core.c だけ multiemu 版 (native/neogeo/core.c、AES でメモリーカードを
+挿した状態にする) に替えて再ビルド。ネオジオ開発環境 本体は変更していない。
+自作TEST BIOS v0.3 (公開版には同梱しない。同梱は v0.6 無償配布版): CARD ルーチンは公開されている呼び出し仕様 (コマンド/答えの番号と
+$10FDC4〜$10FDD0 の引数の意味。ngdevkit memory-card.h の説明と neogeodev wiki "CARD" の記述) だけを
+もとにエミュが書いた。カードの中の並びはチーム独自形式。SNK BIOS / Universe BIOS のコードやダンプは
+見ていない・使っていない。ngdevkit (LGPL) のコードは取り込んでいない (説明文を読んだだけ)。
+テスト用ZIP (testroms/zip/、testroms/mk_zip_tests.py で生成): 中身はチーム自作ROMと自作ダミーだけ。
+
+#####################################################################
+ネオジオ MAME形式セット読込 / ZIP64 / 分割ZIP (web/romload.js, 2026-10-22 エミュ)
+#####################################################################
+新しい第三者コードの取り込みはありません (すべて自作)。参照した資料:
+- .neo の並び (P/S/M/V1/V2/C とヘッダ) : 上記 Geolith (BSD-3-Clause) の geo_neo.c の読込み処理。
+- MAME形式セットの対応表 : ファイル名の規則 (xxx-p1 / -s1 / -m1 / -vN / -cN) と、チームの ngdevkit
+  ビルド (src/build.mk: p1 は dd conv=swab) の出力形式だけから決定。MAME のソースコード・ドライバ表・
+  ハッシュ表 (GPL 部分を含む) は一切参照・使用していません。暗号化セットの復号は実装していません。
+- ZIP64 / 分割ZIP : PKWARE APPNOTE.TXT (公開仕様書) を参照した自作実装。
+
+#####################################################################
+MAME読込の強化 / Info-ZIP・7-Zip 分割 / .neo ヘッダ編集 / MVS カードスロット (2026-10-22 エミュ, 第4回)
+#####################################################################
+新しい第三者コードの取り込みはありません (すべて自作)。
+- P ROM の判定: 公開の P ROM ヘッダ仕様 ($100 "NEO-GEO\0"、$108 NGH) と、チームの ngdevkit ビルドの出力
+  (バイト入替え)。2MB p1 のバンク入替え格納は「後ろ1MBにヘッダがある」ことだけで判定。MAME のコード・表は不使用。
+- 7-Zip の -v 分割 (.zip.001 …) は単純な分割として結合するだけ (7-Zip のコードは不使用)。
+- テスト素材の作成にだけ、箱に apt で入れた Info-ZIP zip 3.0 (Info-ZIP License) と p7zip 16.02
+  (LGPL-2.1 + unRAR 制限) のコマンドを使った。どちらもエミュには組み込まず、配布物にも含めない。
+- MVS カードスロット: Geolith ラッパ native/neogeo/core.c (multiemu 版) の REG_STATUS_B を変えただけ。
+  自作TEST BIOS は v0.3 のまま (CARD ルーチンは AES/MVS 共通のため v0.4 は不要だった)。
+
+#####################################################################
+MAME判定の「どちらか分からない」停止 / MVS で BIOS CARD を呼ぶ経路 (2026-10-22 エミュ, 第5回)
+#####################################################################
+新しい第三者コードの取り込みはありません (すべて自作)。
+- web/romload.js: 役割 (P/V/C/S/M) を中身から決めきれないとき、推定で決めずに止めて
+  「どちらか分からない」と表示する。根拠は前回と同じ公開の P ROM ヘッダ仕様のみ。
+- 自作テストROM testroms/emu_neo_mvscard.neo: BIOS の CARD ($C00468) を呼ぶ。neogeodev wiki の
+  公開の呼び出し仕様だけをもとに作成。
+
+
+#####################################################################
+メモリーカードの公開形式対応 / 自作TEST BIOS v0.5 / 回帰テスト (2026-10-23 エミュ, 第6・7回)
+#####################################################################
+新しい第三者コードの取り込みはありません (すべて自作)。
+- 自作TEST BIOS v0.5 (CARD) と web/cores/neogeo/cardfmt.js: カードの並び (ヘッダ・目次・FAT1・FAT2・
+  64バイトのブロック) は NeoGeo Development Wiki の "Memory card" (Data format) と "CARD" の公開記述だけをもとに
+  自作。SNK / Universe BIOS のコードやダンプは見ていない・使っていない。公開記述に無い点 (FAT チェックサムの
+  計算式など) は独自の決め事。
+- 自作テストROM testroms/emu_neo_mvscard2.neo / emu_neo_cardfmt.neo、tools/regress.mjs ほか: 自作。
+
+#####################################################################
+公開版について (2026-10-24)
+#####################################################################
+上の履歴に出てくる testroms/・tools/・native/・docs/ などの開発用ファイルは公開版に含まれない
+(説明のために残している)。公開版の中身は FILES_MD5.txt を参照。
+
+#####################################################################
+2026-10-24b (第27回)
+#####################################################################
+新しい第三者コードの取り込みはありません。コアはビルド時のパスが残らないよう -ffile-prefix-map /
+-fdebug-prefix-map / -fmacro-prefix-map を付けてビルドし直した (中身のコードは同じ)。
+自作TEST BIOS v0.6 無償配布版: v0.5 の空き領域 (0x1F000〜) に文を入れただけ。コードは v0.5 と同じ。

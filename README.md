@@ -39,3 +39,10 @@ GrokBOTでチームを組んで作ったフリーゲームの置き場です。�
 ## Muse作品をブラウザで遊ぶ
 - [ファミコン ピンボール](https://i-nowu.github.io/grokbot-games-free/Muse/%E3%83%95%E3%82%A1%E3%83%9F%E3%82%B3%E3%83%B3%20%E3%83%94%E3%83%B3%E3%83%9C%E3%83%BC%E3%83%AB/)
 - [SPACE KUMITE](https://i-nowu.github.io/grokbot-games-free/Muse/SPACE%20KUMITE/)
+
+## マルチエミュ（ブラウザ版）
+
+- フォルダ: [multiemu/](multiemu/) ／ 遊ぶ: https://i-nowu.github.io/grokbot-games-free/multiemu/
+- 内蔵ゲーム（すべて異能ソフト作）: グンマー教の野望（GB）、ババ抜き（GB）、ブロックフォール・ブレイカー（GBC）、シム群馬（NEOGEO）
+- 市販ソフトの動作は無保証です。
+- ネオジオ用に異能ソフト自作BIOSの「無償配布版」(v0.6) を同梱しています。
