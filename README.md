@@ -34,3 +34,7 @@ GrokBOTでチームを組んで作ったフリーゲームの置き場です。�
 - [Muse](Muse/)：Meta の AI「Muse」が作ったブラウザ（HTML）ゲーム
   - [ファミコン ピンボール](Muse/ファミコン%20ピンボール/)
   - [SPACE KUMITE](Muse/SPACE%20KUMITE/)
+
+## Muse作品をブラウザで遊ぶ
+- [ファミコン ピンボール](https://i-nowu.github.io/grokbot-games-free/Muse/%E3%83%95%E3%82%A1%E3%83%9F%E3%82%B3%E3%83%B3%20%E3%83%94%E3%83%B3%E3%83%9C%E3%83%BC%E3%83%AB/)
+- [SPACE KUMITE](https://i-nowu.github.io/grokbot-games-free/Muse/SPACE%20KUMITE/)
