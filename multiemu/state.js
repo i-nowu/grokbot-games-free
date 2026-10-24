@@ -60,21 +60,6 @@ window.MultiEmuState = (() => {
     const undo = ctx.core.getState();  // 失敗したときに元へ戻すための控え
     if (!ctx.core.setState(r.body)) { if (undo) ctx.core.setState(undo); return { error: 'コアがステートを受け付けませんでした。読み込みを中止し、元の状態に戻しました。' }; }
     return { h: r.h, migrated: mg.migrated ? u8 : null, chain: mg.chain }; }
-  // ---- 試験用の「版を上げた形式」(第11回、?statefmt=t2 のときだけ) ----
-  // 今の版を旧版とみなし、本体を "T2ST"+u32LE長さ+本体 で包んだ形式を新版 (<今の版>+t2test) とする。
-  // 旧版→新版の移し替えは、旧本体の大きさが今のコアのステートの大きさと同じときだけ包む (違えば推測せず失敗)。
-  function testFormat(core) {
-    const old = core.stateVersion, gs = core.getState.bind(core), ss = core.setState.bind(core), MG = [0x54, 0x32, 0x53, 0x54];
-    const wrap = b => { const o = new Uint8Array(8 + b.length); o.set(MG); new DataView(o.buffer).setUint32(4, b.length, true); o.set(b, 8); return o; };
-    const unwrap = u => (u && u.length >= 8 && MG.every((x, i) => u[i] === x) && new DataView(u.buffer, u.byteOffset).getUint32(4, true) === u.length - 8) ? u.subarray(8) : null;
-    core.stateVersion = old + '+t2test';
-    core.getState = () => { const b = gs(); return b && wrap(b); };
-    core.setState = u => { const b = unwrap(u); return !!b && ss(b); };
-    core.stateMigrations = (core.stateMigrations || []).concat([{ from: old, to: core.stateVersion, run(b) {
-      const now = gs(); if (!now || b.length !== now.length) return { error: '旧ステートの大きさ (' + b.length + ') が今のコア (' + (now && now.length) + ') と合わない' };
-      return { body: wrap(b) }; } }]);
-    core.stateNoMigrate = Object.assign({}, core.stateNoMigrate, { [old + '-t0test']: '試験用: 移し替えできない版として登録' });
-    return core; }
   // ---- 古いステートのまとめファイル (第12回) ----
   // 形式: "MEARCH01" + u32LE ヘッダ長 + ヘッダ JSON + 各項目の本体を順に連結。
   // ヘッダ {format:'multiemu-state-archive', version:1, created, count, items:[{key, size, sha256, core, romName, romHash, coreVersion, savedAt}]}
@@ -141,5 +126,5 @@ window.MultiEmuState = (() => {
       thumb = { type: h.thumb.type, w: h.thumb.w | 0, h: h.thumb.h | 0, u8: tb }; }
     return { ver: 2, state: st, thumb };
   }
-  return { make, fileMake, fileUnpack, check, apply, migrate, testFormat, archPack, archUnpack, unpack, pack, sha, SLOTS: 4 };
+  return { make, fileMake, fileUnpack, check, apply, migrate, archPack, archUnpack, unpack, pack, sha, SLOTS: 4 };
 })();

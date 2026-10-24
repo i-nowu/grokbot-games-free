@@ -45,5 +45,10 @@ window.LnxHdr = (() => {
       eeName: EE[ee & 7] + ((ee & 7) ? (ee & 0x80 ? ' 8bit' : ' 16bit') : '') + ((ee & 0x40) ? ' SD保存' : ''), boot: own ? 'own' : 'encrypted' } };
   }
   const UNSUP = '.lnx 未対応: 先頭が暗号化ローダー (純正形式) です。暗号化ローダーの解読はまだ作っていないので起動しません (Atari のブートROMも使いません)。';
-  return { parse, UNSUP };
+  // 第28回: BS93 (.o) と .lyx の検査。戻り値 null (OK) か エラー文
+  function checkO(u) { if (!u || u.length < 11 || u[0] !== 0x80 || u[1] !== 0x08 || String.fromCharCode(u[6], u[7], u[8], u[9]) !== 'BS93') return '.o の BS93 ヘッダが正しくありません。';
+    const load = u[2] << 8 | u[3], size = u[4] << 8 | u[5];
+    if (size < 11 || size > u.length || load < 0x200 || load + size - 10 > 0xfc00) return '.o の BS93 ヘッダの大きさ/置き場所が不正です (読込先 $' + load.toString(16) + '・大きさ ' + size + ')。'; return null; }
+  function checkLyx(u) { return u && [0x20000, 0x40000, 0x80000].includes(u.length) ? null : '.lyx の大きさ (' + (u ? u.length : 0) + ') が 128KB/256KB/512KB のどれでもありません。'; }
+  return { parse, UNSUP, checkO, checkLyx };
 })();

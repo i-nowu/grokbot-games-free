@@ -1,6 +1,7 @@
 // ユーザーROM読込 (ファイル選択 / ドラッグ&ドロップ)。ROMはこのブラウザ内 (メモリとIndexedDB) だけで扱い、どこにも送信しない。エミュ作 2026-10-22
 // 機種は拡張子とヘッダから自動判定。ZIP は中のROMを取り出して判定し、複数なら選ばせる。BIOS/ブートROMは受け付けない (各コアはチーム自作/オープンのものに固定)。
 window.RomLoad = (() => {
+  let dropGuard = false;
   const ext = n => (n.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
   const asc = (u, o, n) => String.fromCharCode(...u.subarray(o, o + n));
   const PENDING = { pce: 'PCエンジン', gg: 'ゲームギア', sms: 'ゲームギア', rom: 'MSX', mx1: 'MSX', mx2: 'MSX', vec: '光速船 (Vectrex)', j64: 'Jaguar', jag: 'Jaguar', z64: 'N64', n64: 'N64', v64: 'N64' };
@@ -12,14 +13,15 @@ window.RomLoad = (() => {
     if (u.length >= 4 && asc(u, 0, 4) === 'LYNX' || e === 'lnx') { // .lnx: ヘッダを検査し、壊れた/未対応の値は止める (lnxhdr.js)
       const h = LnxHdr.parse(u); if (h.error) return { error: h.error }; if (h.info.boot !== 'own') return { error: LnxHdr.UNSUP };
       return { core: 'lynx', why: 'ヘッダ LYNX (.lnx「' + h.info.name + '」/' + h.info.maker + ' 向き:' + h.info.rotName + ' EEPROM:' + h.info.eeName + ')' }; }
-    if (u.length >= 10 && asc(u, 6, 4) === 'BS93') return { core: 'lynx', why: 'ヘッダ BS93 (自作/homebrew .o)' };
+    if (u.length >= 10 && asc(u, 6, 4) === 'BS93') { const er = LnxHdr.checkO(u); if (er) return { error: er }; return { core: 'lynx', why: 'ヘッダ BS93 (自作/homebrew .o)' }; }
     // GB: $104 のロゴ先頭4バイトとヘッダチェックサム ($14D) で判定
     if (u.length >= 0x150 && u[0x104] === 0xCE && u[0x105] === 0xED && u[0x106] === 0x66 && u[0x107] === 0x66) {
       let x = 0; for (let i = 0x134; i <= 0x14C; i++) x = (x - u[i] - 1) & 0xff;
       if (x === u[0x14D]) return { core: 'gb', why: 'GBヘッダ' + ((u[0x143] & 0x80) ? ' (GBC対応)' : '') };
     }
     if (e === 'gb' || e === 'gbc' || e === 'sgb') return { core: 'gb', why: '拡張子 .' + e };
-    if (e === 'o' || e === 'lyx') return { core: 'lynx', why: '拡張子 .' + e };
+    if (e === 'o') return { error: LnxHdr.checkO(u) };
+    if (e === 'lyx') { const er = LnxHdr.checkLyx(u); if (er) return { error: er }; return { core: 'lynx', why: '拡張子 .lyx' }; }
     if (e === 'neo') return { error: '.neo のヘッダが正しくありません。' };
     if (/bios|boot|lynxboot|sp-s|neo-epo|000-lo|sfix/i.test(name)) return { error: 'BIOSファイルは使いません (各機種はチーム自作/オープンのBIOSに固定)。' };
     if (PENDING[e]) return { error: PENDING[e] + ' はまだ準備中です。' };
@@ -76,7 +78,10 @@ window.RomLoad = (() => {
     if (f.method === 0) d = c.slice();
     else if (f.method === 8) {
       if (typeof DecompressionStream === 'undefined') throw new Error('このブラウザは ZIP の展開 (DecompressionStream) に対応していません。展開してから読み込んでください。');
-      d = new Uint8Array(await new Response(new Blob([c]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      const lim = Math.min(f.usize, MAX), rd = new Blob([c]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(), bufs = []; let got = 0; // 第28回: zip bomb 対策
+      for (;;) { let r; try { r = await rd.read(); } catch (e) { throw new Error(f.name + ': 展開できません (deflate が壊れています)。'); } if (r.done) break; got += r.value.length;
+        if (got > lim) { try { await rd.cancel(); } catch (e) {} throw new Error(f.name + ': 展開すると目次の大きさ (' + f.usize + ') を超えます。zip bomb のおそれがあるので止めました。'); } bufs.push(r.value); }
+      d = new Uint8Array(got); { let o = 0; for (const b of bufs) { d.set(b, o); o += b.length; } }
     } else throw new Error(f.name + ': 未対応の圧縮方式 (' + f.method + ') です。');
     if (d.length !== f.usize) throw new Error(f.name + ': 展開した大きさが合いません。');
     return d;
@@ -216,7 +221,7 @@ window.RomLoad = (() => {
     }
     return { list: ok, skipped: bad };
   }
-  // 複数あるときの選択 (選ぶまで待つ)。テスト用に window.__zipPick にも出す
+  // 複数あるときの選択 (選ぶまで待つ)
   function pick(list) {
     return new Promise(res => {
       const ov = document.createElement('div'); ov.id = 'zip-pick'; ov.className = 'zip-pick';
@@ -284,6 +289,7 @@ window.RomLoad = (() => {
     ['dragenter', 'dragover'].forEach(t => tgt.addEventListener(t, e => { e.preventDefault(); tgt.classList.add('over'); }));
     ['dragleave', 'drop'].forEach(t => tgt.addEventListener(t, e => { e.preventDefault(); tgt.classList.remove('over'); }));
     tgt.addEventListener('drop', e => take(e.dataTransfer && e.dataTransfer.files));
+    if (!dropGuard) { dropGuard = true; ['dragover', 'drop'].forEach(t => window.addEventListener(t, e => { if (!tgt.contains(e.target)) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'none'; } })); } // 第28回
   }
   return { detect, fromFile, fromFiles, bind, hash, fromZip, isZip, zipList, mameRole, setNeoMeta, getNeoMeta, psig };
 })();

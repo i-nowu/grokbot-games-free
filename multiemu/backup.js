@@ -39,7 +39,8 @@ window.MultiEmuBackup = (() => {
     if (h.format !== 'multiemu-backup') return { error: 'バックアップファイルの形式名が違います (' + h.format + ')。' };
     if (h.version !== 1 && h.version !== 2 && h.version !== 3) return { error: 'バックアップファイルの版 (' + h.version + ') に対応していません。' };
     if (!Array.isArray(h.items) || h.items.length !== h.count) return { error: 'バックアップファイルが壊れています (項目数が合わない)。' };
-    const total = h.items.reduce((a, it) => a + (it.size | 0), 0); if (12 + n + total !== u8.length) return { error: 'バックアップファイルが壊れています (大きさが合わない: ' + u8.length + ' / ' + (12 + n + total) + ')。' };
+    if (!h.items.every(it => it && typeof it === 'object' && Number.isSafeInteger(it.size) && it.size >= 0)) return { error: 'バックアップファイルが壊れています (項目の大きさが 0 以上の整数でない)。' }; // 第28回
+    const total = h.items.reduce((a, it) => a + it.size, 0); if (12 + n + total !== u8.length) return { error: 'バックアップファイルが壊れています (大きさが合わない: ' + u8.length + ' / ' + (12 + n + total) + ')。' };
     const out = []; let o = 12 + n;
     for (const it of h.items) {
       if (!STORES.includes(it.store) || (it.store === 'reasons' && h.version < 3)) return { error: 'バックアップファイルの項目の種類 (' + it.store + ') に対応していません。' };

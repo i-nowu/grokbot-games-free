@@ -24,25 +24,29 @@
   const saveAtFallback = (k, at) => { try { let o = {}; try { o = JSON.parse(localStorage.getItem('multiemu.saveAt') || '{}'); } catch (e) { o = null; } if (!o || typeof o !== 'object' || Array.isArray(o)) { addReason('DB に書けず、旧キーも表でないので退避できない: ' + k); return false; }
       if (!(k in o)) o[k] = at; localStorage.setItem('multiemu.saveAt', JSON.stringify(o)); addReason('DB に書けないので旧キーへ退避: ' + k); return true; } catch (e) { quotaWarn('セーブ日時 ' + k + ' (DB にも書けていない)', e); return false; } };
   // 第23回: localStorage が満杯でどこにも書けないとき、画面に警告を出して .mebak への書き出しを勧める
-  window.__quota = { count: 0, last: '' };
-  function quotaWarn(what, e) { window.__quota.count++; window.__quota.last = what + ': ' + (e && (e.name || e.message) || e);
+  const quotaSt = { count: 0, last: '' };
+  function quotaWarn(what, e) { quotaSt.count++; quotaSt.last = what + ': ' + (e && (e.name || e.message) || e);
     const show = () => { let w = document.getElementById('quota-warn'); if (!w) { w = document.createElement('div'); w.id = 'quota-warn'; w.setAttribute('role', 'alert');
         w.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;overflow:auto;box-sizing:border-box;background:#7a1010;color:#fff;padding:4px 8px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0008';
         w.innerHTML = '<b>保存できませんでした</b> <button id="quota-export">全部を .mebak に書き出す</button> <button id="quota-close">閉じる</button><div>ブラウザの保存領域 (localStorage) が満杯で、どこにも書けません。いまのデータを .mebak に書き出して残してください。</div><div id="quota-msg"></div>';
         document.body.appendChild(w); w.querySelector('#quota-export').onclick = () => bkExport('all', true); w.querySelector('#quota-close').onclick = () => { w.hidden = true; warnLayout(); }; }
-      w.hidden = false; w.querySelector('#quota-msg').textContent = '書けなかったもの: ' + window.__quota.last + ' (' + window.__quota.count + '回目)'; warnLayout(); };
+      w.hidden = false; w.querySelector('#quota-msg').textContent = '書けなかったもの: ' + quotaSt.last + ' (' + quotaSt.count + '回目)'; warnLayout(); };
     if (document.body) show(); else window.addEventListener('DOMContentLoaded', show); }
   // 第25回: 警告の帯は画面の上に積み、その高さだけ #app (画面とパッド) を下げる。帯がパッドや画面に重ならない (縦・横とも)
   // 帯の合計は画面の高さの 26% まで (横向きは 24%)。入りきらない分は帯の中でスクロール。見出しとボタンは先頭の行
-  function warnLayout() { const vis = ['quota-warn', 'ra-top'].map(id => document.getElementById(id)).filter(w => w && !w.hidden), budget = Math.floor(innerHeight * (innerWidth > innerHeight ? 0.24 : 0.26)); let y = 0;
+  function warnLayout() { const vis = ['idb-warn', 'quota-warn', 'ra-top'].map(id => document.getElementById(id)).filter(w => w && !w.hidden), budget = Math.floor(innerHeight * (innerWidth > innerHeight ? 0.24 : 0.26)); let y = 0;
     for (const w of vis) { w.style.maxHeight = Math.floor(budget / vis.length) + 'px'; w.style.top = y + 'px'; y += w.getBoundingClientRect().height; }
-    const app = document.getElementById('app'); if (app) app.style.top = y ? Math.ceil(y) + 'px' : ''; window.__warnH = Math.ceil(y); }
+    const app = document.getElementById('app'); if (app) app.style.top = y ? Math.ceil(y) + 'px' : ''; }
   window.addEventListener('resize', () => warnLayout());
+  if (!idb) { const w = document.createElement('div'); w.id = 'idb-warn'; w.setAttribute('role', 'alert'); // 第28回: IndexedDB が使えない
+    w.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;overflow:auto;box-sizing:border-box;background:#7a1010;color:#fff;padding:4px 8px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0008';
+    w.innerHTML = '<b>このブラウザでは保存できません</b> <button id="idb-close">閉じる</button><div>IndexedDB が使えません (プライベートブラウズや設定で止められている可能性)。セーブ・ステート・読み込んだROMは、ページを閉じると消えます。</div>';
+    document.body.appendChild(w); w.querySelector('#idb-close').onclick = () => { w.hidden = true; warnLayout(); }; warnLayout(); }
   // 第23回: 退避キー RA に上限 (RA_MAX 件)。超えた古い分は日付ごとに IndexedDB 'reasonArchive' (キー YYYY-MM-DD) へ足し、読み直して確かめてから RA を縮める
-  const RA_MAX = 50; window.__raMove = { runs: 0, moved: 0, verified: null, shrunk: false, reason: '' }; let raBusy = null;
+  const RA_MAX = 50; const raMove = { runs: 0, moved: 0, verified: null, shrunk: false, reason: '' }; let raBusy = null;
   const raGet = d => new Promise(ok => { try { const q = idb.transaction('reasonArchive').objectStore('reasonArchive').get(d); q.onsuccess = () => ok(q.result); q.onerror = () => ok(undefined); } catch (e) { ok(undefined); } });
   const raPut = (d, v) => new Promise(ok => { try { const t = idb.transaction('reasonArchive', 'readwrite'); t.objectStore('reasonArchive').put(v, d); t.oncomplete = () => ok(true); t.onerror = t.onabort = () => ok(false); } catch (e) { ok(false); } });
-  function raFlush() { if (!idb) return Promise.resolve(false); if (raBusy) return raBusy.then(raFlush); return raBusy = (async () => { const M = window.__raMove; M.runs++;
+  function raFlush() { if (!idb) return Promise.resolve(false); if (raBusy) return raBusy.then(raFlush); return raBusy = (async () => { const M = raMove; M.runs++;
       let raw = localStorage.getItem(RA), a; try { a = JSON.parse(raw || '[]'); } catch (e) { M.reason = '退避キーが JSON として読めないので動かさない'; return false; } if (!Array.isArray(a)) a = [a]; if (a.length <= RA_MAX) return true;
       const mv = a.slice(0, a.length - RA_MAX), keep = a.slice(a.length - RA_MAX), by = {};
       for (const x of mv) { const d = x && typeof x.at === 'string' && /^\d{4}-\d\d-\d\d/.test(x.at) ? x.at.slice(0, 10) : 'unknown'; (by[d] = by[d] || []).push(x); }
@@ -50,13 +54,13 @@
       for (const d in by) { const back = await raGet(d), want = before[d].concat(by[d]); if (!Array.isArray(back) || JSON.stringify(back.slice(0, want.length)) !== JSON.stringify(want)) { M.verified = false; M.reason = '読み直した DB が合わない (' + d + ')'; return false; } }
       M.verified = true; if (localStorage.getItem(RA) !== raw) { M.reason = '途中で退避キーが変わったので縮めない'; return false; }
       try { localStorage.setItem(RA, JSON.stringify(keep)); M.shrunk = true; M.moved += mv.length; M.reason = ''; } catch (e) { M.reason = '縮められない: ' + e.message; return false; } return true; })().finally(() => { raBusy = null; }); }
-  window.__raFlush = () => raFlush(); window.__raDump = () => new Promise(ok => { const r = {}; try { const c = idb.transaction('reasonArchive').objectStore('reasonArchive').openCursor(); c.onsuccess = () => { const x = c.result; if (x) { r[x.key] = x.value; x.continue(); } else ok(r); }; } catch (e) { ok(r); } });
+  const raDump = () => new Promise(ok => { const r = {}; try { const c = idb.transaction('reasonArchive').objectStore('reasonArchive').openCursor(); c.onsuccess = () => { const x = c.result; if (x) { r[x.key] = x.value; x.continue(); } else ok(r); }; } catch (e) { ok(r); } });
   // 第24回: reasonArchive の件数と容量、20MB を超えたとき・DB に書けず退避キーが50件を超えたままのときの警告
   const RA_WARN_BYTES = 20 * 1024 * 1024;
   const raStats = () => new Promise(ok => { const r = { count: 0, days: 0, bytes: 0 }; if (!idb) return ok(r); const te = new TextEncoder();
     try { const c = idb.transaction('reasonArchive').objectStore('reasonArchive').openCursor(); c.onsuccess = () => { const x = c.result; if (x) { r.days++; r.count += Array.isArray(x.value) ? x.value.length : 1; r.bytes += te.encode(String(x.key)).length + te.encode(JSON.stringify(x.value)).length; x.continue(); } else ok(r); }; c.onerror = () => ok(r); } catch (e) { ok(r); } });
   const raLen = () => { try { const a = JSON.parse(localStorage.getItem(RA) || '[]'); return Array.isArray(a) ? a.length : 1; } catch (e) { return -1; } };
-  async function raCheck() { const st = await raStats(), n = raLen(), M = window.__raMove; const W = window.__raWarn = { ...st, lsLen: n, big: st.bytes > RA_WARN_BYTES, stuck: n > RA_MAX && M.verified === false, msgs: [] };
+  async function raCheck() { const st = await raStats(), n = raLen(), M = raMove; const W = { ...st, lsLen: n, big: st.bytes > RA_WARN_BYTES, stuck: n > RA_MAX && M.verified === false, msgs: [] };
     if (W.big) W.msgs.push('理由の退避 (IndexedDB reasonArchive) が ' + (st.bytes / 1048576).toFixed(1) + 'MB で、目安の 20MB を超えています。.mebak に書き出して手元に残してください。');
     if (W.stuck) W.msgs.push('DB に書けないため、退避用キー (localStorage) の理由が ' + n + '件 (上限50件) のままです' + (M.reason ? ' (理由: ' + M.reason + ')' : '') + '。.mebak に書き出して残してください。');
     const show = () => { let w = document.getElementById('ra-top');
@@ -66,13 +70,12 @@
         document.body.appendChild(w); w.querySelector('#ra-export').onclick = () => bkExport('all', true); w.querySelector('#ra-close').onclick = () => { w.hidden = true; warnLayout(); }; }
       w.hidden = false; w.querySelector('#ra-top-msg').textContent = W.msgs.join(' '); warnLayout(); };
     if (document.body) show(); else window.addEventListener('DOMContentLoaded', show); return W; }
-  window.__raCheck = raCheck; window.__raStats = raStats;
   raFlush().then(raCheck, raCheck);
   // 第21回: 別のタブへ BroadcastChannel で知らせる (受けた側は写し SA を更新して一覧を描き直す)
   let saCh = null; try { saCh = new BroadcastChannel('multiemu.saveAt'); } catch (e) {}
   const saListeners = [], BK_EV = 'multiemu.saveAt.bcast';
-  window.__saVia = saCh ? 'broadcast' : 'storage';
-  const saRecv = d => { if (d && d.type === 'saveAt' && typeof d.k === 'string' && typeof d.at === 'string' && !isNaN(new Date(d.at))) { SA[d.k] = d.at; window.__saRecv = (window.__saRecv || 0) + 1; for (const f of saListeners) try { f(d); } catch (e) {} } };
+  const SA_K = k => typeof k === 'string' && /^[\w.:\-]{1,200}$/.test(k) && !['__proto__', 'constructor', 'prototype'].includes(k); // 第28回
+  const saRecv = d => { if (d && d.type === 'saveAt' && SA_K(d.k) && typeof d.at === 'string' && !isNaN(new Date(d.at))) { SA[d.k] = d.at; for (const f of saListeners) try { f(d); } catch (e) {} } };
   if (saCh) saCh.onmessage = ev => saRecv(ev.data);
   else window.addEventListener('storage', ev => { if (ev.key !== BK_EV || !ev.newValue) return; try { saRecv(JSON.parse(ev.newValue)); } catch (e) {} }); // 第22回: BroadcastChannel がないとき
   const stampSave = (k, at) => { k = String(k); SA[k] = at || new Date().toISOString(); const pr = metaPut(k, { at: SA[k] }); const at2 = SA[k]; return pr.then(ok => { if (!ok) { saveAtFallback(k, at2); return false; }
@@ -94,7 +97,6 @@
     if (!saMig.removed && saMig.reason) addReason(saMig.reason);
     if (saMig.removed && localStorage.getItem('multiemu.saveAt') !== null) { saMig.removed = false; saMig.reason = '旧キーを外せない (外した後も残っている)'; addReason(saMig.reason); }
     for (const e of await metaAll()) if (e.v && e.v.at) SA[e.key] = e.v.at; }
-  window.__saMig = saMig;
   const stampThumb = v => v && typeof v === 'object' && v.u8 && !v.at ? { ...v, at: new Date().toISOString() } : v;
   const dbPut = (st, k, v) => new Promise(ok => { if (!idb) return ok(); if (st === 'thumbs') v = stampThumb(v); const t = idb.transaction(st, 'readwrite'); if (st === 'saves') stampSave(k); t.objectStore(st).put(v, k); t.oncomplete = ok; t.onerror = ok; });
   const sGet = k => dbGet('saves', k), sPut = (k, v) => dbPut('saves', k, v);
@@ -106,7 +108,6 @@
     const v = r.core === 'neogeo' ? (qs.get('core') === 'neogeo' && qs.get('v') || 'aes') : '';
     location.search = '?core=' + r.core + '&user=1' + (v ? '&v=' + v : '') + (qs.get('pad') ? '&pad=1' : '');
   }
-  window.__openUserRom = openUserRom;
   function showNeedBios(key) {
     const v = qs.get('v') || '', box = document.createElement('div'); box.id = 'needbios'; box.className = 'needbios';
     box.innerHTML = '<p><b>BIOSが必要です。自分で正規に入手したものを読み込んでね</b></p><p>ネオジオ ' + (key.endsWith('aes') ? 'AES' : 'MVS') + ' 用の BIOS (zip) を選んでください。BIOS はこの端末のブラウザ内だけに保存し、外部に送信しません。</p>'
@@ -120,6 +121,7 @@
   // ---- 機種選択画面 ----
   if (!coreId) {
     RomLoad.bind($('u-file'), $('u-drop'), r => openUserRom(r, t => $('u-msg').textContent = t), t => $('u-msg').textContent = t);
+    try { const bf = sessionStorage.getItem('multiemu.bootFail'); if (bf) { sessionStorage.removeItem('multiemu.bootFail'); $('u-msg').textContent = bf; } } catch (e) {} // 第28回
     for (const c of CORE_LIST) { const b = document.createElement('button'); b.textContent = c.name + (c.ready ? '' : ' (準備中)'); b.disabled = !c.ready;
       b.onclick = () => { location.search = '?core=' + c.id; }; $('syslist').appendChild(b); }
     return;
@@ -167,7 +169,7 @@
   if (!rom) { const roms = core.builtin(); const b = roms.find(r => r.id === qs.get('rom')) || roms[0]; rom = b && { name: b.name, builtin: b.id }; }
   if (!rom) { alert('この機種の内蔵ゲームはありません。メニューの「ROMファイルを開く」から自分で用意したROMを読み込んでね'); location.search = ''; return; }
   try { core.loadRom(rom.user ? { data: rom.data, hash: rom.hash } : { builtin: rom.builtin }); }
-  catch (e) { alert('読み込めませんでした: ' + e.message); location.search = ''; return; }
+  catch (e) { try { sessionStorage.setItem('multiemu.bootFail', '起動できませんでした: ' + e.message); } catch (er) {} alert('読み込めませんでした: ' + e.message); location.search = ''; return; }
   $('gamename').textContent = rom.name; $('note').textContent = core.biosNote + ' / ' + core.name + (rom.user ? ' / ユーザーROM (ブラウザ内のみ)' : '') + (core.romInfo ? ' / ' + core.romInfo : '');
   // ネオジオのユーザーROM (.neo / 組立) は ヘッダの名前・年・メーカーを編集できる (v4 エミュ 2026-10-22)
   if (rom.user && coreId === 'neogeo') { $('btn-meta').hidden = false;
@@ -184,7 +186,6 @@
   setInterval(flushSave, 3000); addEventListener('pagehide', flushSave); document.addEventListener('visibilitychange', () => document.hidden && flushSave());
 
   // ---- ステートセーブ/ロード (第10回、全コア共通。state.js / docs/CORE_IF.md) ----
-  if (window.MultiEmuState && qs.get('statefmt') === 't2' && core.getState) MultiEmuState.testFormat(core); // 第11回 試験用の新版形式
   const ST = window.MultiEmuState, hasState = !!(ST && core.getState && core.setState && core.romBytes && core.stateVersion);
   const romBytes = core.romBytes && core.romBytes();
   const romHash = hasState && romBytes ? (await ST.sha(romBytes)).slice(0, 32) : '';
@@ -338,13 +339,13 @@
     for (const e of await dbAll('states')) if (inScope(e.key)) ents.push({ store: 'states', key: String(e.key), u8: e.u8, meta: {}, at: when('states', e.u8) });
     for (const e of await thAll()) if (inScope(e.key)) ents.push({ store: 'thumbs', key: String(e.key), u8: new Uint8Array(e.u8), meta: { type: e.type, w: e.w, h: e.h, ...(e.src ? { src: e.src } : {}) }, at: e.at || '' });
     for (const e of await kvAll('saves')) { const k = String(e.key), m = smap[k]; if (scope === 'all' || (m && m.romHash === scope)) ents.push({ store: 'saves', key: k, u8: new Uint8Array(e.v), meta: m ? { romHash: m.romHash, romName: m.romName } : {}, at: SA[k] || '' }); }
-    if (scope === 'all') { const te = new TextEncoder(), arc = await window.__raDump(); // 第25回: 理由の記録 (reasonArchive・退避用キー・履歴) も全部の書き出しに入れる
+    if (scope === 'all') { const te = new TextEncoder(), arc = await raDump(); // 第25回: 理由の記録 (reasonArchive・退避用キー・履歴) も全部の書き出しに入れる
       for (const d of Object.keys(arc).sort()) ents.push({ store: 'reasons', key: 'archive/' + d, u8: te.encode(JSON.stringify(Array.isArray(arc[d]) ? arc[d] : [arc[d]])), meta: {}, at: '' });
       for (const [k, lk] of [['ls/keptReasonArchive', RA], ['ls/keptReason', RH]]) { const raw = localStorage.getItem(lk); if (raw === null) continue; let v; try { v = JSON.parse(raw); } catch (e) { v = [{ at: '', reason: '読めなかった元の文字列', raw }]; } if (!Array.isArray(v)) v = [v]; if (v.length) ents.push({ store: 'reasons', key: k, u8: te.encode(JSON.stringify(v)), meta: {}, at: '' }); } }
     return ents; }
   // 第25回: 理由の記録の取り込み。今ある記録 (履歴・退避用キー・reasonArchive のどこか) と同じものは飛ばし、足りないものだけ足す。上書きしない
   const rsJ = x => JSON.stringify(x);
-  async function rsHave() { const s = new Set(), arc = await window.__raDump(); for (const v of Object.values(arc)) for (const x of [].concat(v)) s.add(rsJ(x));
+  async function rsHave() { const s = new Set(), arc = await raDump(); for (const v of Object.values(arc)) for (const x of [].concat(v)) s.add(rsJ(x));
     for (const x of reasonHist()) s.add(rsJ(x)); try { for (const x of [].concat(JSON.parse(localStorage.getItem(RA) || '[]'))) s.add(rsJ(x)); } catch (e) {} return s; }
   const rsList = e => { try { return [].concat(JSON.parse(new TextDecoder().decode(e.u8))); } catch (er) { return []; } };
   async function rsApply(e, miss) { if (!miss.length) return true;
@@ -491,8 +492,7 @@
   pad.addEventListener('mousedown', e => { const el = hit(e.clientX, e.clientY); if (el) { held.set('m', el.dataset.k); el.classList.add('on'); } });
   addEventListener('mouseup', () => { held.delete('m'); pad.querySelectorAll('.on').forEach(el => el.classList.remove('on')); });
   const GP = { 12: 'up', 13: 'down', 14: 'left', 15: 'right', 0: core.pad.face[0], 1: core.pad.face[1], 2: core.pad.face[2], 3: core.pad.face[3], 9: 'start', 8: 'select', 4: 'coin' };
-  const AUTOTEST = qs.get('autotest') === '1'; let frameNo = 0; const script = [];
-  if (AUTOTEST) { script.push([400, 410, 'coin'], [600, 606, 'start']); }
+  let frameNo = 0; const script = [];
   function readInput() {
     const s = new Set([...keys, ...held.values()]);
     const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
@@ -511,7 +511,7 @@
   let paused = false, acc = 0, last = performance.now(), frames = 0, fpsT = last, audioSamples = 0;
   function tick(now) {
     acc += Math.min(now - last, 100); last = now; const step = 1000 / core.fps; let ran = 0;
-    if (document.hidden || paused || !$('st').hidden) acc = 0; if (AUTOTEST && !paused && $('st').hidden) acc = Math.max(acc, step * 3);
+    if (document.hidden || paused || !$('st').hidden) acc = 0;
     while (acc >= step && ran < 3) {
       readInput(); core.runFrame(); frameNo++;
       const a = core.getAudio(); audioSamples += a.length;
@@ -523,7 +523,6 @@
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
-  window.__emu = { core, get paused() { return paused; }, set paused(v) { paused = !!v; }, get frame() { return frameNo; }, get audioSamples() { return audioSamples; }, audioMode: sink && sink.mode, flushSave, sGet, saveKey,
-    state: hasState ? { save: stSave, load: stLoad, apply: (u8, w) => stApply(u8, w || 'テスト'), make: () => ST.make(stCtx), fileExport: async () => [...await stFileExport(false)], fileImport: (u, name) => stFileImport(new Uint8Array(u), 'テストファイル', name), fileThumbs: () => stFileThumbList().then(a => a.map(({ t, ...x }) => x)), putThumbRaw: (k, v) => dbPut('thumbs', k, { ...v, u8: new Uint8Array(v.u8).buffer }), thumbSave: stThumbSave, dupes: { saveAt, putLegacy: (st, k, v) => new Promise(ok => { const t = idb.transaction(st, 'readwrite'); t.objectStore(st).put(st === 'thumbs' ? { ...v, u8: new Uint8Array(v.u8).buffer } : new Uint8Array(v).buffer, k); t.oncomplete = () => ok(true); }), getThumb: async k => { const v = await dbGet('thumbs', k); return v && { at: v.at || null, type: v.type, bytes: [...new Uint8Array(v.u8)] }; }, list: duList, ask: duAsk, askKeys: async ks => duAsk((await duList()).filter(x => ks.includes(x.store + ':' + x.key))), move: duMove, cancel: duCancel, trash: trAll, restore: duRestore, render: duRender, md5: u => hex(new Uint8Array(u)) }, backup: { exportGame: async () => [...(await bkExport(romHash, false)) || []], exportAll: async () => [...(await bkExport('all', false)) || []], preview: u => bkPreview(new Uint8Array(u)), apply: bkApply, cancel: bkCancel, saves: async () => (await kvAll('saves')).map(e => [String(e.key), [...new Uint8Array(e.v)]]), putSave: (k, u) => dbPut('saves', k, new Uint8Array(u).buffer) }, setLimit: async mb => { localStorage.setItem('multiemu.limitMB', String(mb)); return stArchRender(); }, get: n => dbGet('states', stKey(n)), arch: { usage: stUsage, render: stArchRender, exportOld: async () => { const u = await stArchExport(false); return u ? [...u] : null; }, importArch: u => stArchImport(new Uint8Array(u)), dump: async () => (await dbAll('states')).map(e => [String(e.key), [...e.u8]]), thumbs: async () => (await thAll()).map(e => [String(e.key), { type: e.type, w: e.w, h: e.h, size: e.u8.byteLength, bytes: [...new Uint8Array(e.u8)] }]), putRaw: (k, u) => dbPut('states', k, new Uint8Array(u).buffer) }, getKey: k => dbGet('states', stKey(k)), put: (n, u8) => dbPut('states', stKey(n), u8.buffer.slice(0)), version: core.stateVersion, msg: () => $('st-msg').textContent, romHash } : null };
-  window.__booted = true;
-})();
+})().catch(e => { const bootError = String(e && e.message || e); const w = document.createElement('div'); w.id = 'boot-fail'; w.setAttribute('role', 'alert'); // 第28回: 起動の失敗を画面に
+  w.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#7a1010;color:#fff;padding:8px;font-size:14px';
+  w.textContent = '起動に失敗しました: ' + bootError + ' (再読み込みするか、メニューに戻ってください)'; const a = document.createElement('a'); a.href = '?'; a.textContent = ' メニューへ'; a.style.color = '#fff'; w.appendChild(a); document.body.appendChild(w); });

@@ -1,5 +1,5 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{margin:0;height:100%;background:#000;color:#ddd;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none}
+html,body{margin:0;height:100%;background:#000;color:#ddd;font-family:system-ui,sans-serif;overflow:hidden;touch-action:pinch-zoom}
 #app{position:fixed;inset:0;display:grid;grid-template-rows:1fr auto auto auto;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #screen-wrap{position:relative;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
 #screen{image-rendering:pixelated;image-rendering:crisp-edges;background:#000}

@@ -26,6 +26,8 @@ window.MultiEmuCores.lynx = async function createLynx(opts) {
       let ee = 1 /* BS93 は 93C46 16bit 既定 */, info = null;
       if (data.length >= 4 && data[0] === 0x4C && data[1] === 0x59 && data[2] === 0x4E && data[3] === 0x58) { // .lnx: 推測せず検査 (lnxhdr.js)
         const h = LnxHdr.parse(data); if (h.error) throw new Error(h.error); if (h.info.boot !== 'own') throw new Error(LnxHdr.UNSUP); info = h.info; ee = info.eeprom; }
+      else if (data.length >= 10 && data[6] === 0x42 && data[7] === 0x53 && data[8] === 0x39 && data[9] === 0x33) { const er = LnxHdr.checkO(data); if (er) throw new Error(er); } // 第28回
+      else { const er = LnxHdr.checkLyx(data); if (er) throw new Error(er); }
       const p = M._lx_alloc(data.length); M.HEAPU8.set(data, p);
       const r = M._lx_load(p, data.length, ee); M._free(p);
       if (r === 2) throw new Error(LnxHdr.UNSUP); if (r === 3) throw new Error('.lnx 先頭の BS93 ローダーが不正です。');
